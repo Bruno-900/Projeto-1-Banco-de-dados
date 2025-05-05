@@ -51,11 +51,6 @@ CREATE TABLE Compra (
     CONSTRAINT fk_Compra_Pagamento FOREIGN KEY (fk_Pagamento_ID_Pagamento) REFERENCES Pagamento(ID_Pagamento)
 );
 
-CREATE TABLE Tutor (
-    ID_Tutor INT PRIMARY KEY,
-    Nome VARCHAR(100)
-);
-
 CREATE TABLE Tipo (
     ID_Tipo INT PRIMARY KEY,
     Tipo_Ingresso VARCHAR(100),
@@ -63,6 +58,12 @@ CREATE TABLE Tipo (
     Quantidade_Disponivel INT,
     Preco DECIMAL(10,2)
 );
+
+CREATE TABLE Tutor (
+    ID_Tutor INT PRIMARY KEY,
+    Nome VARCHAR(100)
+);
+
 
 CREATE TABLE CHECKIN_Ingresso (
     ID_CHECKIN INT PRIMARY KEY,
@@ -74,13 +75,20 @@ CREATE TABLE CHECKIN_Ingresso (
     Data_Visita DATE,
     Data_Hora_Checkin DATETIME,
     Status_Ingresso VARCHAR(50),
-    fk_Tutor_ID_Tutor INT,
     fk_Compra_ID_Compra INT,
     fk_Tipo_ID_Tipo INT,
-    CONSTRAINT fk_Checkin_Tutor FOREIGN KEY (fk_Tutor_ID_Tutor) REFERENCES Tutor(ID_Tutor),
     CONSTRAINT fk_Checkin_Compra FOREIGN KEY (fk_Compra_ID_Compra) REFERENCES Compra(ID_Compra),
     CONSTRAINT fk_Checkin_Tipo FOREIGN KEY (fk_Tipo_ID_Tipo) REFERENCES Tipo(ID_Tipo)
 );
+
+CREATE TABLE Vinculo_Tutor_Ingresso (
+    ID_Vinculo INT PRIMARY KEY,
+    ID_Tutor INT,
+    ID_CHECKIN INT,
+    CONSTRAINT FK_Vinculo_Tutor FOREIGN KEY (ID_Tutor) REFERENCES Tutor(ID_Tutor),
+    CONSTRAINT FK_Vinculo_Checkin FOREIGN KEY (ID_CHECKIN) REFERENCES CHECKIN_Ingresso(ID_CHECKIN)
+);
+
 
 CREATE TABLE Avaliacao (
     ID_Avaliacao INT PRIMARY KEY,
@@ -113,10 +121,18 @@ CREATE TABLE Horario_Funcionamento (
 );
 
 CREATE TABLE Capacidade_Diaria (
+    ID_Capacidade_Diaria INT PRIMARY KEY,
     Quantidade_Maxima INT,
     Vigencia DATE,
+    fk_Horario_Funcionamento INT
+);
+
+CREATE TABLE Funcionamento_Capacidade (
+    ID_Funcionamento_Capacidade INT PRIMARY KEY,
     fk_Horario_Funcionamento INT,
-    CONSTRAINT fk_Capacidade_Horario FOREIGN KEY (fk_Horario_Funcionamento) REFERENCES Horario_Funcionamento(ID_Funcionamento)
+    fk_Capacidade_Diaria INT,
+    CONSTRAINT FK_FuncionamentoCapacidade_HorarioFuncionamento FOREIGN KEY (fk_Horario_Funcionamento) REFERENCES Horario_Funcionamento(ID_Funcionamento),
+    CONSTRAINT FK_FuncionamentoCapacidade_CapacidadeDiaria FOREIGN KEY (fk_Capacidade_Diaria) REFERENCES Capacidade_Diaria(ID_Capacidade_Diaria)
 );
 
 CREATE TABLE Admin (
@@ -129,6 +145,7 @@ CREATE TABLE Admin (
 );
 
 CREATE TABLE Acoes_Admin (
+    ID_Acoes INT PRIMARY KEY,
     Acao VARCHAR(100),
     Descricao TEXT,
     Data_Hora DATETIME,
@@ -142,6 +159,7 @@ CREATE TABLE Permissoes (
 );
 
 CREATE TABLE Cargo_Permissoes (
+	ID_Cargo_Permissoes INT PRIMARY KEY,
     fk_Permissoes_ID_Permissao INT,
     fk_Admin_ID_admin INT,
     PRIMARY KEY (fk_Permissoes_ID_Permissao, fk_Admin_ID_admin),
@@ -301,14 +319,44 @@ INSERT INTO Horario_Funcionamento (ID_Funcionamento, Hora_Abertura, Data_Inicio,
 (5, '07:00:00','2025-02-01','19:00:00','2025-02-28','Horário Fevereiro');
 
 -- 12) Capacidade_Diaria (subquery para fk_Horario_Funcionamento)
-INSERT INTO Capacidade_Diaria (Quantidade_Maxima, Vigencia, fk_Horario_Funcionamento) VALUES
-(100, '2025-01-01', (SELECT ID_Funcionamento FROM Horario_Funcionamento WHERE ID_Funcionamento = 1)),
-(150, '2025-07-01', (SELECT ID_Funcionamento FROM Horario_Funcionamento WHERE ID_Funcionamento = 2)),
-(120, '2025-05-01', (SELECT ID_Funcionamento FROM Horario_Funcionamento WHERE ID_Funcionamento = 3)),
-(130, '2025-04-01', (SELECT ID_Funcionamento FROM Horario_Funcionamento WHERE ID_Funcionamento = 4)),
-(110, '2025-02-01', (SELECT ID_Funcionamento FROM Horario_Funcionamento WHERE ID_Funcionamento = 5));
+INSERT INTO Capacidade_Diaria (ID_Capacidade_Diaria,Quantidade_Maxima, Vigencia, fk_Horario_Funcionamento) VALUES
+(1,100, '2025-01-01', (SELECT ID_Funcionamento FROM Horario_Funcionamento WHERE ID_Funcionamento = 1)),
+(2,150, '2025-07-01', (SELECT ID_Funcionamento FROM Horario_Funcionamento WHERE ID_Funcionamento = 2)),
+(3,120, '2025-05-01', (SELECT ID_Funcionamento FROM Horario_Funcionamento WHERE ID_Funcionamento = 3)),
+(4,130, '2025-04-01', (SELECT ID_Funcionamento FROM Horario_Funcionamento WHERE ID_Funcionamento = 4)),
+(5,110, '2025-02-01', (SELECT ID_Funcionamento FROM Horario_Funcionamento WHERE ID_Funcionamento = 5));
 
--- 13) Admin
+INSERT INTO Funcionamento_Capacidade (ID_Funcionamento_Capacidade, fk_Horario_Funcionamento, fk_Capacidade_Diaria)
+VALUES
+  (1,(SELECT ID_Funcionamento FROM Horario_Funcionamento WHERE ID_Funcionamento = 1),
+    (SELECT ID_Capacidade_Diaria FROM Capacidade_Diaria WHERE fk_Horario_Funcionamento = 1)
+  ),
+  (2,(SELECT ID_Funcionamento FROM Horario_Funcionamento WHERE ID_Funcionamento = 2),
+    (SELECT ID_Capacidade_Diaria FROM Capacidade_Diaria WHERE fk_Horario_Funcionamento = 2)
+  ),
+  (3,(SELECT ID_Funcionamento FROM Horario_Funcionamento WHERE ID_Funcionamento = 3),
+    (SELECT ID_Capacidade_Diaria FROM Capacidade_Diaria WHERE fk_Horario_Funcionamento = 3)
+  ),
+  (4,(SELECT ID_Funcionamento FROM Horario_Funcionamento WHERE ID_Funcionamento = 4),
+    (SELECT ID_Capacidade_Diaria FROM Capacidade_Diaria WHERE fk_Horario_Funcionamento = 4)
+  ),
+  (5,(SELECT ID_Funcionamento FROM Horario_Funcionamento WHERE ID_Funcionamento = 5),
+    (SELECT ID_Capacidade_Diaria FROM Capacidade_Diaria WHERE fk_Horario_Funcionamento = 5));
+
+-- 13) Vinculo_Tutor_Ingresso (subqueries para ID_Tutor e ID_CHECKIN)
+INSERT INTO Vinculo_Tutor_Ingresso (ID_Vinculo, ID_Tutor, ID_CHECKIN) VALUES
+(1, (SELECT ID_Tutor FROM Tutor WHERE Nome = 'Maria Alves'), 
+	(SELECT ID_CHECKIN FROM CHECKIN_Ingresso WHERE ID_CHECKIN = 1)),
+(2, (SELECT ID_Tutor FROM Tutor WHERE Nome = 'Pedro Lima'), 
+    (SELECT ID_CHECKIN FROM CHECKIN_Ingresso WHERE ID_CHECKIN = 2)),
+(3, (SELECT ID_Tutor FROM Tutor WHERE Nome = 'Juliana Fernandes'), 
+    (SELECT ID_CHECKIN FROM CHECKIN_Ingresso WHERE ID_CHECKIN = 3)),
+(4, (SELECT ID_Tutor FROM Tutor WHERE Nome = 'Rafael Santos'), 
+    (SELECT ID_CHECKIN FROM CHECKIN_Ingresso WHERE ID_CHECKIN = 4)),
+(5, (SELECT ID_Tutor FROM Tutor WHERE Nome = 'Patrícia Oliveira'), 
+    (SELECT ID_CHECKIN FROM CHECKIN_Ingresso WHERE ID_CHECKIN = 5));
+
+-- 14) Admin
 INSERT INTO Admin (ID_admin, Nome, Data_Cadastro, Senha, Cargo, Ultimo_Login) VALUES
 (1, 'João Admin',     '2024-01-01','$2y$10$abc','Gerente', '2025-04-20 08:00:00'),
 (2, 'Mariana Admin',  '2024-02-15','$2y$10$def','Supervisor','2025-04-21 09:15:00'),
@@ -316,15 +364,15 @@ INSERT INTO Admin (ID_admin, Nome, Data_Cadastro, Senha, Cargo, Ultimo_Login) VA
 (4, 'Fernanda Admin', '2024-04-05','$2y$10$jkl','Analista',  '2025-04-23 11:45:00'),
 (5, 'Ricardo Admin',  '2024-05-20','$2y$10$mno','Diretor',   '2025-04-24 13:00:00');
 
--- 14) Acoes_Admin (subquery para fk_Admin_ID_admin)
-INSERT INTO Acoes_Admin (Acao, Descricao, Data_Hora, fk_Admin_ID_admin) VALUES
-('Login','Usuário fez login','2025-04-20 08:00:00', (SELECT ID_admin FROM Admin WHERE Nome = 'João Admin')),
-('Alterar Promoção','Atualizou valores de desconto','2025-04-21 09:15:00', (SELECT ID_admin FROM Admin WHERE Nome = 'Mariana Admin')),
-('Cancelar Compra','Cancelou compra ID 3','2025-04-22 10:30:00', (SELECT ID_admin FROM Admin WHERE Nome = 'Lucas Admin')),
-('Atualizar Horário','Mudou horário Abril','2025-04-23 11:45:00', (SELECT ID_admin FROM Admin WHERE Nome = 'Fernanda Admin')),
-('Criar Usuário','Cadastrou novo admin','2025-04-24 13:00:00', (SELECT ID_admin FROM Admin WHERE Nome = 'Ricardo Admin'));
+-- 15) Acoes_Admin (subquery para fk_Admin_ID_admin)
+INSERT INTO Acoes_Admin (ID_Acoes, Acao, Descricao, Data_Hora, fk_Admin_ID_admin) VALUES
+(1,'Login','Usuário fez login','2025-04-20 08:00:00', (SELECT ID_admin FROM Admin WHERE Nome = 'João Admin')),
+(2,'Alterar Promoção','Atualizou valores de desconto','2025-04-21 09:15:00', (SELECT ID_admin FROM Admin WHERE Nome = 'Mariana Admin')),
+(3,'Cancelar Compra','Cancelou compra ID 3','2025-04-22 10:30:00', (SELECT ID_admin FROM Admin WHERE Nome = 'Lucas Admin')),
+(4,'Atualizar Horário','Mudou horário Abril','2025-04-23 11:45:00', (SELECT ID_admin FROM Admin WHERE Nome = 'Fernanda Admin')),
+(5,'Criar Usuário','Cadastrou novo admin','2025-04-24 13:00:00', (SELECT ID_admin FROM Admin WHERE Nome = 'Ricardo Admin'));
 
--- 15) Permissoes
+-- 16) Permissoes
 INSERT INTO Permissoes (ID_Permissao, Nome) VALUES
 (1, 'Acesso_Leitura'),
 (2, 'Acesso_Pagamentos'),
@@ -332,15 +380,15 @@ INSERT INTO Permissoes (ID_Permissao, Nome) VALUES
 (4, 'Gerenciamento_Usuários'),
 (5, 'Configuração_Sistema');
 
--- 16) Cargo_Permissoes (subqueries para ambas as fks)
-INSERT INTO Cargo_Permissoes (fk_Permissoes_ID_Permissao, fk_Admin_ID_admin) VALUES
-((SELECT ID_Permissao FROM Permissoes WHERE ID_Permissao = 1), (SELECT ID_admin FROM Admin WHERE Nome = 'João Admin')),
-((SELECT ID_Permissao FROM Permissoes WHERE ID_Permissao = 2), (SELECT ID_admin FROM Admin WHERE Nome = 'Mariana Admin')),
-((SELECT ID_Permissao FROM Permissoes WHERE ID_Permissao = 3), (SELECT ID_admin FROM Admin WHERE Nome = 'Lucas Admin')),
-((SELECT ID_Permissao FROM Permissoes WHERE ID_Permissao = 4), (SELECT ID_admin FROM Admin WHERE Nome = 'Fernanda Admin')),
-((SELECT ID_Permissao FROM Permissoes WHERE ID_Permissao = 5), (SELECT ID_admin FROM Admin WHERE Nome = 'Ricardo Admin'));
+-- 17) Cargo_Permissoes (subqueries para ambas as fks)
+INSERT INTO Cargo_Permissoes (ID_Cargo_Permissoes,fk_Permissoes_ID_Permissao, fk_Admin_ID_admin) VALUES
+(1,(SELECT ID_Permissao FROM Permissoes WHERE ID_Permissao = 1), (SELECT ID_admin FROM Admin WHERE Nome = 'João Admin')),
+(2,(SELECT ID_Permissao FROM Permissoes WHERE ID_Permissao = 2), (SELECT ID_admin FROM Admin WHERE Nome = 'Mariana Admin')),
+(3,(SELECT ID_Permissao FROM Permissoes WHERE ID_Permissao = 3), (SELECT ID_admin FROM Admin WHERE Nome = 'Lucas Admin')),
+(4,(SELECT ID_Permissao FROM Permissoes WHERE ID_Permissao = 4), (SELECT ID_admin FROM Admin WHERE Nome = 'Fernanda Admin')),
+(5,(SELECT ID_Permissao FROM Permissoes WHERE ID_Permissao = 5), (SELECT ID_admin FROM Admin WHERE Nome = 'Ricardo Admin'));
 
--- 17) Conteudo_Site (subquery para fk_Admin_ID_admin)
+-- 18) Conteudo_Site (subquery para fk_Admin_ID_admin)
 INSERT INTO Conteudo_Site (ID_Site, Tipo, Data_Publicacao, Autor, fk_Admin_ID_admin) VALUES
 (1, 'Blog',    '2025-03-01', 'João Admin',     (SELECT ID_admin FROM Admin WHERE Nome = 'João Admin')),
 (2, 'Notícia', '2025-03-15', 'Mariana Admin',  (SELECT ID_admin FROM Admin WHERE Nome = 'Mariana Admin')),
